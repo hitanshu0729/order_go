@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -9,7 +10,7 @@ import (
 
 	_ "github.com/joho/godotenv/autoload"
 
-	"Kafka_Practice/internal/database"
+	"github.com/hitanshu0729/order_go/internal/database"
 )
 
 type Server struct {
@@ -26,6 +27,8 @@ func NewServer() *http.Server {
 		db: database.New(),
 	}
 
+	log.Println("Database connected successfully.")
+
 	// Declare Server config
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", NewServer.port),
@@ -34,6 +37,8 @@ func NewServer() *http.Server {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
+
+	log.Printf("Server is running on port %d", NewServer.port)
 
 	return server
 }

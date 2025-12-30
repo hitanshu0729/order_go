@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"Kafka_Practice/internal/server"
+	"github.com/hitanshu0729/order_go/internal/server"
 )
 
 func gracefulShutdown(apiServer *http.Server, done chan bool) {
@@ -51,7 +51,8 @@ func main() {
 	if err != nil && err != http.ErrServerClosed {
 		panic(fmt.Sprintf("http server error: %s", err))
 	}
-
+	defer server.Close()
+	defer log.Println("Server stopped.")
 	// Wait for the graceful shutdown to complete
 	<-done
 	log.Println("Graceful shutdown complete.")

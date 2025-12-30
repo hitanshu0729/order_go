@@ -1,6 +1,9 @@
 package server
 
 import (
+	"github.com/hitanshu0729/order_go/internal/handlers"
+	"github.com/hitanshu0729/order_go/internal/storage/sqlite"
+	"log"
 	"net/http"
 
 	"github.com/gin-contrib/cors"
@@ -17,9 +20,27 @@ func (s *Server) RegisterRoutes() http.Handler {
 		AllowCredentials: true, // Enable cookies/auth
 	}))
 
-	r.GET("/", s.HelloWorldHandler)
+	api := r.Group("/api/v1")
+	api.GET("/", s.HelloWorldHandler)
+	api.GET("/health", s.healthHandler)
 
-	r.GET("/health", s.healthHandler)
+	// User Routes
+	sqlDB, err := s.db.GetSqlDB()
+	if err != nil {
+		log.Fatal("Failed to get SQL DB:", err)
+	}
+
+	Repo := sqlite.NewRepo(sqlDB)
+	userHandler := handlers.NewUserHandler(Repo)
+	userHandler.RegisterUserRoutes(api)
+
+	// Product Routes
+	productHandler := handlers.NewProductHandler(Repo)
+	productHandler.RegisterProductRoutes(api)
+
+	// Order Routes
+	orderHandler := handlers.NewOrderHandler(Repo)
+	orderHandler.RegisterOrderRoutes(api)
 
 	return r
 }
