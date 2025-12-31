@@ -54,7 +54,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	)
 
 	log.Println("Starting kafka consumer")
-	go consumer.Start(context.Background(), inventoryConsumer)
+	go consumer.Start(context.Background(), inventoryConsumer, s.DLQProducer)
 
 	return r
 }

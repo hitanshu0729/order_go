@@ -21,6 +21,8 @@ type Server struct {
 	db database.Service
 
 	KafkaProducer *kafka.Producer
+
+	DLQProducer *kafka.DLQProducer
 }
 
 func NewServer() *http.Server {
@@ -30,6 +32,10 @@ func NewServer() *http.Server {
 	producer := kafka.NewProducer([]string{"localhost:9092"})
 	// defer producer.Close()
 	log.Println("Kafka producer created successfully.")
+
+	dlqproducer := kafka.NewDLQProducer([]string{"localhost:9092"})
+	// defer dlqproducer.Close()
+	log.Println("Kafka DLQ producer created successfully.")
 
 	log.Println("Started kafka consumer")
 	go func() {
@@ -52,6 +58,8 @@ func NewServer() *http.Server {
 		db: database.New(),
 
 		KafkaProducer: producer,
+
+		DLQProducer: dlqproducer,
 	}
 
 	log.Println("Database connected successfully.")

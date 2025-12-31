@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 
+	"github.com/hitanshu0729/order_go/internal/domain"
 	"github.com/hitanshu0729/order_go/internal/storage/sqlite"
 	"github.com/mattn/go-sqlite3"
 )
@@ -30,7 +32,7 @@ type EventPayload struct {
 func (c *InventoryConsumer) HandleMessage(ctx context.Context, value []byte) error {
 	var e Event
 	if err := json.Unmarshal(value, &e); err != nil {
-		return err
+		return fmt.Errorf("%w: %v", domain.ErrInvalidPayload, err)
 	}
 	log.Printf("Event received: %+v", e)
 	if e.Type != "order.paid" {
@@ -92,7 +94,6 @@ func (c *InventoryConsumer) processOrder(ctx context.Context, orderID int64) err
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	
 
 	// 3️⃣ Commit both together
 	committed = true

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/hitanshu0729/order_go/internal/domain"
 	"github.com/hitanshu0729/order_go/internal/models"
 )
 
@@ -114,7 +115,7 @@ func (r *Repo) DecreaseProductStockTx(
 
 	rows, _ := res.RowsAffected()
 	if rows == 0 {
-		return errors.New("insufficient stock")
+		return domain.ErrInsufficientStock
 	}
 	return nil
 }
