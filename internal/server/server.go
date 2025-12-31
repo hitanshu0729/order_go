@@ -30,6 +30,16 @@ func NewServer() *http.Server {
 	producer := kafka.NewProducer([]string{"localhost:9092"})
 	// defer producer.Close()
 	log.Println("Kafka producer created successfully.")
+
+	log.Println("Creating kafka consumer")
+	consumer := kafka.NewConsumer(
+		[]string{"localhost:9092"},
+		"order-service",
+	)
+
+	go consumer.Start(context.Background())
+
+	log.Println("Started kafka consumer")
 	go func() {
 		time.Sleep(3 * time.Second)
 		err := producer.Publish(
