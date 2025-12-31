@@ -3,9 +3,11 @@ package kafka
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 
 	"github.com/hitanshu0729/order_go/internal/storage/sqlite"
+	"github.com/mattn/go-sqlite3"
 )
 
 type InventoryConsumer struct {
@@ -45,14 +47,38 @@ func (c *InventoryConsumer) processOrder(ctx context.Context, orderID int64) err
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
 
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	// 1️⃣ Idempotency guard
+	err = c.repo.MarkEventProcessedTx(
+		ctx,
+		tx,
+		"order.paid",
+		orderID,
+	)
+	if err != nil {
+		if isUniqueConstraintError(err) {
+			// already processed → safe no-op
+			log.Printf("Already proceesed for order.paid event type and order id %d", orderID)
+			return nil
+		}
+		return err
+	}
+
+	// 2️⃣ Apply side effects
 	items, err := c.repo.GetOrderItemsTx(ctx, tx, orderID)
 	if err != nil {
 		return err
 	}
 
 	for _, item := range items {
+		log.Printf("Decreasing stock for product %d by %d", item.ProductID, item.Quantity)
 		err := c.repo.DecreaseProductStockTx(
 			ctx,
 			tx,
@@ -63,6 +89,20 @@ func (c *InventoryConsumer) processOrder(ctx context.Context, orderID int64) err
 			return err
 		}
 	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	
 
-	return tx.Commit()
+	// 3️⃣ Commit both together
+	committed = true
+	return nil
+}
+func isUniqueConstraintError(err error) bool {
+	var sqliteErr sqlite3.Error
+	if errors.As(err, &sqliteErr) {
+		return sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique ||
+			sqliteErr.ExtendedCode == sqlite3.ErrConstraintPrimaryKey
+	}
+	return false
 }

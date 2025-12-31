@@ -3,7 +3,6 @@ package kafka
 import (
 	"context"
 	"log"
-	"time"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -18,9 +17,10 @@ func NewConsumer(brokers []string, groupID string) *Consumer {
 			Brokers:        brokers,
 			Topic:          "orders.events",
 			GroupID:        groupID,
-			MinBytes:       1e3,         // 1KB
-			MaxBytes:       10e6,        // 10MB
-			CommitInterval: time.Second, // auto-commit
+			MinBytes:       1e3,  // 1KB
+			MaxBytes:       10e6, // 10MB
+			CommitInterval: 0,    // disable auto-commit
+
 		}),
 	}
 }
@@ -32,7 +32,7 @@ func (c *Consumer) Start(
 	log.Println("📥 Kafka consumer started")
 
 	for {
-		msg, err := c.reader.ReadMessage(ctx)
+		msg, err := c.reader.FetchMessage(ctx)
 		if err != nil {
 			log.Println("❌ consumer error:", err)
 			return
@@ -50,6 +50,10 @@ func (c *Consumer) Start(
 		if err != nil {
 			log.Println("inventory update failed:", err)
 			// DO NOT crash
+		}
+
+		if err := c.reader.CommitMessages(ctx, msg); err != nil {
+			log.Println("❌ offset commit failed:", err)
 		}
 	}
 }

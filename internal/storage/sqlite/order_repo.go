@@ -3,11 +3,13 @@
 package sqlite
 
 import (
-	"github.com/hitanshu0729/order_go/internal/models"
 	"context"
 	"database/sql"
+	"log"
 	"strings"
 	"time"
+
+	"github.com/hitanshu0729/order_go/internal/models"
 )
 
 func (r *Repo) CreateOrder(ctx context.Context, userID int64, status string, totalAmount int64) error {
@@ -134,4 +136,22 @@ func (r *Repo) GetOrdersFiltered(ctx context.Context, filter OrderFilter) ([]*mo
 		orders = append(orders, &o)
 	}
 	return orders, nil
+}
+
+func (r *Repo) MarkEventProcessedTx(
+	ctx context.Context,
+	tx *sql.Tx,
+	eventType string,
+	entityID int64,
+) error {
+	_, err := tx.ExecContext(
+		ctx,
+		`INSERT INTO processed_events (event_type, entity_id) VALUES (?, ?)`,
+		eventType,
+		entityID,
+	)
+	if err == nil {
+		log.Printf("Successfully marked event processed: %s for entity ID %d", eventType, entityID)
+	}
+	return err
 }
