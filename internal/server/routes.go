@@ -1,10 +1,12 @@
 package server
 
 import (
+	"context"
 	"log"
 	"net/http"
 
 	"github.com/hitanshu0729/order_go/internal/handlers"
+	"github.com/hitanshu0729/order_go/internal/kafka"
 	"github.com/hitanshu0729/order_go/internal/storage/sqlite"
 
 	"github.com/gin-contrib/cors"
@@ -42,6 +44,17 @@ func (s *Server) RegisterRoutes() http.Handler {
 	// Order Routes
 	orderHandler := handlers.NewOrderHandler(Repo, s.KafkaProducer)
 	orderHandler.RegisterOrderRoutes(api)
+
+	inventoryConsumer := kafka.NewInventoryConsumer(Repo)
+
+	log.Println("Creating kafka consumer")
+	consumer := kafka.NewConsumer(
+		[]string{"localhost:9092"},
+		"order-service",
+	)
+
+	log.Println("Starting kafka consumer")
+	go consumer.Start(context.Background(), inventoryConsumer)
 
 	return r
 }

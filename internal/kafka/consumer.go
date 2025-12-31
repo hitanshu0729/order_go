@@ -25,7 +25,10 @@ func NewConsumer(brokers []string, groupID string) *Consumer {
 	}
 }
 
-func (c *Consumer) Start(ctx context.Context) {
+func (c *Consumer) Start(
+	ctx context.Context,
+	inventoryConsumer *InventoryConsumer,
+) {
 	log.Println("📥 Kafka consumer started")
 
 	for {
@@ -42,6 +45,12 @@ func (c *Consumer) Start(ctx context.Context) {
 			msg.Offset,
 			string(msg.Value),
 		)
+
+		err = inventoryConsumer.HandleMessage(ctx, msg.Value)
+		if err != nil {
+			log.Println("inventory update failed:", err)
+			// DO NOT crash
+		}
 	}
 }
 
