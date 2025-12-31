@@ -217,6 +217,13 @@ func (h *OrderHandler) PayOrder(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update order status"})
 		return
 	}
+	go h.kafkaProducer.Publish(
+		context.Background(),
+		"order.paid",
+		map[string]any{
+			"order_id": id,
+		},
+	)
 	c.JSON(http.StatusOK, gin.H{"message": "order status updated", "status": "paid"})
 }
 

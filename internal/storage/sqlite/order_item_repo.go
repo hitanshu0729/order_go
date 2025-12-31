@@ -1,10 +1,11 @@
 package sqlite
 
 import (
-	"github.com/hitanshu0729/order_go/internal/models"
 	"context"
 	"database/sql"
 	"errors"
+
+	"github.com/hitanshu0729/order_go/internal/models"
 )
 
 // GetOrderItems returns all items for a given order.
@@ -93,4 +94,66 @@ func (r *Repo) recalculateOrderTotal(ctx context.Context, orderID int64) error {
 		return err
 	}
 	return r.UpdateOrderTotal(ctx, orderID, total.Int64)
+}
+
+func (r *Repo) DecreaseProductStockTx(
+	ctx context.Context,
+	tx *sql.Tx,
+	productID, qty int64,
+) error {
+	res, err := tx.ExecContext(
+		ctx,
+		`UPDATE products
+		 SET stock = stock - ?
+		 WHERE id = ? AND stock >= ?`,
+		qty, productID, qty,
+	)
+	if err != nil {
+		return err
+	}
+
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return errors.New("insufficient stock")
+	}
+	return nil
+}
+
+func (r *Repo) BeginTx(ctx context.Context) (*sql.Tx, error) {
+	return r.db.BeginTx(ctx, nil)
+}
+
+func (r *Repo) GetOrderItemsTx(
+	ctx context.Context,
+	tx *sql.Tx,
+	orderID int64,
+) ([]OrderItem, error) {
+
+	rows, err := tx.QueryContext(
+		ctx,
+		`SELECT product_id, quantity
+		 FROM order_items
+		 WHERE order_id = ?`,
+		orderID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []OrderItem
+	for rows.Next() {
+		var it OrderItem
+		if err := rows.Scan(&it.ProductID, &it.Quantity); err != nil {
+			return nil, err
+		}
+		items = append(items, it)
+	}
+
+	return items, rows.Err()
+}
+
+type OrderItem struct {
+	ProductID int64
+	Quantity  int64
 }
