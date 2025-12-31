@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/hitanshu0729/order_go/internal/kafka"
 	_ "github.com/joho/godotenv/autoload"
 
 	"github.com/hitanshu0729/order_go/internal/database"
@@ -17,14 +19,37 @@ type Server struct {
 	port int
 
 	db database.Service
+
+	KafkaProducer *kafka.Producer
 }
 
 func NewServer() *http.Server {
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
+
+	log.Println("Creating kafka producer")
+	producer := kafka.NewProducer([]string{"localhost:9092"})
+	// defer producer.Close()
+	log.Println("Kafka producer created successfully.")
+	go func() {
+		time.Sleep(3 * time.Second)
+		err := producer.Publish(
+			context.Background(),
+			"test.message",
+			map[string]string{"msg": "hello from startup"},
+		)
+		if err != nil {
+			log.Println("startup publish failed:", err)
+		} else {
+			log.Println("startup publish success")
+		}
+	}()
+
 	NewServer := &Server{
 		port: port,
 
 		db: database.New(),
+
+		KafkaProducer: producer,
 	}
 
 	log.Println("Database connected successfully.")
