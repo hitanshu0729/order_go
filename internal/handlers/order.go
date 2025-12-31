@@ -1,21 +1,25 @@
 package handlers
 
 import (
-	"github.com/hitanshu0729/order_go/internal/storage/sqlite"
+	"context"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/hitanshu0729/order_go/internal/kafka"
+	"github.com/hitanshu0729/order_go/internal/storage/sqlite"
+
 	"github.com/gin-gonic/gin"
 )
 
 type OrderHandler struct {
-	orders *sqlite.Repo
+	orders        *sqlite.Repo
+	kafkaProducer *kafka.Producer
 }
 
-func NewOrderHandler(orders *sqlite.Repo) *OrderHandler {
-	return &OrderHandler{orders: orders}
+func NewOrderHandler(orders *sqlite.Repo, kafkaProducer *kafka.Producer) *OrderHandler {
+	return &OrderHandler{orders: orders, kafkaProducer: kafkaProducer}
 }
 
 func (h *OrderHandler) RegisterOrderRoutes(rg *gin.RouterGroup) {
@@ -68,6 +72,19 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		return
 	}
 	log.Printf("Order created successfully: %+v", req)
+	// ✅ AFTER DB commit
+	log.Println("🚀 Publishing order.created event to Kafka")
+	err = h.kafkaProducer.Publish(
+		context.Background(),
+		"order.created",
+		map[string]any{
+			"user_id": req.UserID,
+		},
+	)
+	if err != nil {
+		log.Println("❌ Kafka publish failed:", err)
+	}
+
 	c.JSON(http.StatusCreated, gin.H{"message": "Order created"})
 }
 

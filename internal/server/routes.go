@@ -1,10 +1,11 @@
 package server
 
 import (
-	"github.com/hitanshu0729/order_go/internal/handlers"
-	"github.com/hitanshu0729/order_go/internal/storage/sqlite"
 	"log"
 	"net/http"
+
+	"github.com/hitanshu0729/order_go/internal/handlers"
+	"github.com/hitanshu0729/order_go/internal/storage/sqlite"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -39,7 +40,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	productHandler.RegisterProductRoutes(api)
 
 	// Order Routes
-	orderHandler := handlers.NewOrderHandler(Repo)
+	orderHandler := handlers.NewOrderHandler(Repo, s.KafkaProducer)
 	orderHandler.RegisterOrderRoutes(api)
 
 	return r
